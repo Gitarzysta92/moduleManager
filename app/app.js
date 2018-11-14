@@ -5,12 +5,9 @@ const path = require('path');
 class DirMap {
 	constructor(startDir) {
 		this.directory = startDir.split(path.sep).join('/');
-		this.dirs = [];
+		this.dirs = this.recursiveDirWalker(this.directory);
+		this.exclude = 
 		this.model = [];
-	}
-
-	init() {
-		return this.recursiveDirWalker(this.directory);
 	}
 
 	recursiveDirWalker(entryPath) {	
@@ -34,7 +31,6 @@ class DirMap {
 				} else if(stats.isFile()) {
 					resolve(entryPath);
 				}
-				this.dirs.push(entryPath);
 			});
 		})
 		return checkDir;
@@ -104,7 +100,7 @@ class App {
 
 		this.modules = new DirMap(this.root_dir);
 
-		this.modules.dirModel().then(x=> console.log(x));
+		this.modules.dirs.then(x=> console.log(x));
 
 	}
 
@@ -189,5 +185,37 @@ module.exports = (function() {
 		})
 		return found;
 	}
+
+	async dirModel() {
+		await this.recursiveDirWalker(this.directory)
+			.then(() => {
+				this.dirs.forEach((item, key, array) => {
+					const isPath = /\./i;					
+					if (!isPath.test(item)) {
+						const dir = item.replace(this.directory, '');
+						const pathName = dir.substr(1);
+						const itemGroup = [];
+
+						
+						array.forEach(item => {
+							const wrapper = item.split('/');
+							if (item.indexOf(pathName) > 0 && isPath.test(item)) {
+								const mod = {
+									url: item,
+									currentFolder: pathName,
+									wrapperFolder: wrapper[wrapper.length-3]
+								}
+								itemGroup.push(mod);		
+							}
+						})
+						this.model.push(itemGroup);
+						//{[pathName] :itemGroup}
+					}
+				})
+			});
+			console.log(this.model);
+			return this.model;	
+	}
+
 
 */

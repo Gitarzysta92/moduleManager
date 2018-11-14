@@ -1,0 +1,1 @@
+module.export = 'module-3';
