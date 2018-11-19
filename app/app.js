@@ -5,9 +5,7 @@ const path = require('path');
 class DirMap {
 	constructor(startDir) {
 		this.directory = startDir.split(path.sep).join('/');
-		this.dirs = this.recursiveDirWalker(this.directory);
-		this.exclude = 
-		this.model = [];
+		this.paths = [];
 	}
 
 	recursiveDirWalker(entryPath) {	
@@ -36,35 +34,36 @@ class DirMap {
 		return checkDir;
 	}
 
-	async dirModel() {
+	async model() {
 		await this.recursiveDirWalker(this.directory)
-			.then(() => {
-				this.dirs.forEach((item, key, array) => {
-					const isPath = /\./i;					
-					if (!isPath.test(item)) {
-						const dir = item.replace(this.directory, '');
-						const pathName = dir.substr(1);
-						const itemGroup = [];
-
-						
-						array.forEach(item => {
-							const wrapper = item.split('/');
-							if (item.indexOf(pathName) > 0 && isPath.test(item)) {
-								const mod = {
-									url: item,
-									currentFolder: pathName,
-									wrapperFolder: wrapper[wrapper.length-3]
-								}
-								itemGroup.push(mod);		
-							}
-						})
-						this.model.push(itemGroup);
-						//{[pathName] :itemGroup}
-					}
+			.then(resolve => {
+				this.listResults(resolve);
+				this.paths.forEach((item, key, array) => {
+					console.log(this.pathToArray(item));
 				})
 			});
-			console.log(this.model);
-			return this.model;	
+			
+	}
+
+
+
+	listResults(arrayItem) {
+		if (typeof arrayItem === 'string') {
+			this.paths.push(this.relativePath(arrayItem));
+		} else if (Array.isArray(arrayItem)) {
+			arrayItem.forEach(item => {
+				this.listResults(item);
+			});
+		}
+	}
+
+	relativePath(path) {
+		return path.replace(this.directory, '');
+	}
+
+	pathToArray(path) {
+		const pathArray = path.split('/'); 
+		return pathArray[0].length > 0 ? pathArray.slice(1) : pathArray;
 	}
 
 
@@ -100,7 +99,7 @@ class App {
 
 		this.modules = new DirMap(this.root_dir);
 
-		this.modules.dirs.then(x=> console.log(x));
+		this.modules.model();
 
 	}
 
