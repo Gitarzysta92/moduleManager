@@ -38,9 +38,15 @@ class DirMap {
 		await this.recursiveDirWalker(this.directory)
 			.then(resolve => {
 				this.listResults(resolve);
-				this.paths.forEach((item, key, array) => {
-					console.log(this.pathToArray(item));
+				const reduced = this.paths.map((item, key, array) => {
+					const current = this.pathToArray(item); 
+					const previous = this.pathToArray(array[key-1]); 
+					//console.log(previous);
+					if (current[0] !== previous[0]) {
+						return current[0];
+					}
 				})
+				console.log(reduced);
 			});
 			
 	}
@@ -62,8 +68,9 @@ class DirMap {
 	}
 
 	pathToArray(path) {
-		const pathArray = path.split('/'); 
-		return pathArray[0].length > 0 ? pathArray.slice(1) : pathArray;
+		if (typeof path !== 'string') return [];
+		const pathArray = path.split('/');
+		return pathArray[0].length === 0 ? pathArray.slice(1) : pathArray;
 	}
 
 
