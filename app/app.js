@@ -2,96 +2,124 @@ const fs = require('fs');
 const path = require('path');
 
 
+//
+//
+//
+
 class DirMap {
-	constructor(startDir) {
+	constructor(startDir, ignored) {
 		this.directory = startDir.split(path.sep).join('/');
-		this.paths = [];
+		this._ignorePattern = ignored;
+		this._defaultPattern = this._prepareRegexPattern(['node_modules', '.gitignore','.git']);
 	}
 
-	recursiveDirWalker(entryPath) {	
-		const checkDir = new Promise((resolve, reject) => {
-			fs.stat(entryPath, (err, stats) => {
-				if (stats.isDirectory()) {
-					const readDir = new Promise((resolve, reject) => {
-						fs.readdir(entryPath, (err, result) => {
-							resolve(this.validation(result));
-						});		
-					}).then(result => {					
-						const nextIterations = [];
-						result.forEach(item => {
-							const currentPath = entryPath.concat('/'+ item);
-							nextIterations.push(this.recursiveDirWalker(currentPath));
-						}) 
-						return nextIterations;
-					}).then(x => {
-						Promise.all(x).then(x => resolve(x));
-					}).catch(err => err);
-				} else if(stats.isFile()) {
-					resolve(entryPath);
-				}
-			});
-		})
-		return checkDir;
+	// DirMap interface
+	async getFilesList(includeFiles) {
+		const filesArray = await this._dirWalker(this.directory);
+		return this._validate(this._createList(filesArray), this._dirInclude, includeFiles);		
 	}
 
-	async model() {
-		await this.recursiveDirWalker(this.directory)
-			.then(resolve => {
-				this.listResults(resolve);
-				const reduced = this.paths.map((item, key, array) => {
-					const current = this.pathToArray(item); 
-					const previous = this.pathToArray(array[key-1]); 
-					//console.log(previous);
-					if (current[0] !== previous[0]) {
-						return current[0];
-					}
-				})
-				console.log(reduced);
-			});
+	async getSingleFile(fileQuery) {
+		const result = await this.getFilesList(fileQuery)
+		return result[0];
+	}
+
+	// Recursive dir walker
+	// input:path = base directory
+	// output:promise = array of files directories
+	async _dirWalker(path) {
+		const currentElement = await this._reading(path);
+		const list = [];
 			
-	}
-
-
-
-	listResults(arrayItem) {
-		if (typeof arrayItem === 'string') {
-			this.paths.push(this.relativePath(arrayItem));
-		} else if (Array.isArray(arrayItem)) {
-			arrayItem.forEach(item => {
-				this.listResults(item);
+		if (currentElement.isDirectory()) {
+			let pathList = await this._listing(path);	
+			pathList = this._validate(pathList, this._dirExclude, this._ignorePattern);
+			await this._forEachAsync(pathList, async current => {
+					const fullPath = path.concat('/'+ current);
+					const results = await this._dirWalker(fullPath);
+					list.push(results);	
 			});
+			return list;
+		} else {
+			return path;
 		}
 	}
 
-	relativePath(path) {
-		return path.replace(this.directory, '');
+	// Get elements of passed directory
+	// input:path = base directory
+	// output:promise = array of directory elements
+	_listing(path) {
+		const statResult = new Promise((resolve, reject) => {
+			fs.readdir(path, (error, fileList) => {
+				resolve(fileList);
+				reject(error);
+			});
+		});
+		return statResult;
 	}
 
-	pathToArray(path) {
-		if (typeof path !== 'string') return [];
-		const pathArray = path.split('/');
-		return pathArray[0].length === 0 ? pathArray.slice(1) : pathArray;
+	// Get stats of passed directory
+	// input:path = base directory
+	// output:promise = file stats object
+	_reading(path) {
+		const readResult = new Promise((resolve, reject) => {
+			fs.stat(path, (error, file) => {
+				resolve(file);
+				reject(error);
+			});
+		});
+		return readResult;
 	}
 
+	_createList(filesArray, aggregator = []) {
+		const result = aggregator;
+		filesArray.forEach(current => {
+			typeof current === 'object' ? this._createList(current, result) : result.push(current);
+		});
+		return result;
+	}
 
-	validation(pathItems) {
-		const validated = [];
-		const exclude = /(node_modules|\.git|\.gitignore)$/i;
-		pathItems.forEach(item => {
-			if (!exclude.test(item)) validated.push(item);	
-		}) 
-		return validated;
-	}	
-		
+	//
+	// Utils
+	//
 
-	dirValidation(directory) {
-		const node = /(node_modules|\.git|\.gitignore)$/i;
+	_validate(dirArray, validateType, toValidate) {
+		return dirArray.filter(current => {
+			if (validateType(current, this._prepareRegexPattern(toValidate))) {	
+				return current;
+			}
+		}); 
+	}
+
+	// Exclude choosen directories
+	// input:string = base directory
+	// output:boolean = true if not ignored
+	_dirExclude(directory, pattern) {
+		const node = pattern ? pattern : /(.)/i;
 		return !node.test(directory);
 	}
 
-	fileValidation() {
-		const file = /as$/;
-		return !file.test(filePath);
+	_dirInclude(directory, pattern) {
+		const node = pattern ? pattern : /(.)/i;
+		return node.test(directory);
+	}
+
+	// Prepare regexp object with exclude pattern
+	// input:array = list of exluded elements
+	// output:object = prepared pattern
+	_prepareRegexPattern(elementsArray = []) {
+		const regStr = elementsArray.map(current => {
+			return current.charAt(0) === '.' ? '\\' + current : current;
+		}).join('|');
+		const regex = new RegExp('(' + regStr + ')','ig');
+		return regStr.length > 0 ? regex : null;
+	}
+
+	//Asynchoronus forEach loop
+	async _forEachAsync(array, callback) {
+		for(let index = 0; index < array.length; index++) {
+			await callback(array[index], index, array);
+		}
 	}
 
 }
@@ -103,11 +131,11 @@ class DirMap {
 class App {
 	constructor(args) {
 		this.root_dir = args[0];
+		this.modulesIgnorePattern = ['node_modules', '.gitignore','.git','package-lock.json', 'package.json', 'README.md']
+		this.modules = new DirMap(this.root_dir, this.modulesIgnorePattern);
+		this.modules.getFilesList(['module-2']).then(result => console.log(result));
 
-		this.modules = new DirMap(this.root_dir);
-
-		this.modules.model();
-
+		this.modules.getSingleFile(['module-2.js']).then(result => console.log(result));
 	}
 
 	met() {
@@ -116,7 +144,14 @@ class App {
 		return this.method;
 	}
 
+	pathToArray(path) {
+		if (typeof path !== 'string') return [];
+		const pathArray = path.split('/');
+		return pathArray[0].length === 0 ? pathArray.slice(1) : pathArray;
+	}
+
 }
+
 
 
 
@@ -138,90 +173,4 @@ module.exports = (function() {
 	}
 })();
 
-
-
-/*
-
-	registerModules() {
-		const items = [];
-		//console.log(this.root_dir)
-		//console.log(require.main);
-		this.readFolder(this.root_dir)
-			.then(items => this.compareArrays(items))
-			.then(items => this.modules = items)
-			.then(items => this.findModules(items))
-			.then(items => console.log(items));
-		
-	}
-
-	compareArrays(arr) {
-		const finalarray = [];
-
-		this.modules.forEach((module) => 
-			arr.forEach((file) => { 
-				if (module === file) {
-					finalarray.push(module);
-				}
-			}) 
-		)
-		return finalarray;
-	}
-
-	readFolder(folderDir) {
-		let list = new Promise((resolve, reject) => {
-			fs.readdir(folderDir, function(err, items){
-				resolve(items);
-				reject(err)
-			});
-		});
-		return list;
-	}
-
-	findModules(items) {
-		const found = ['asd']
-		items.forEach(item => {
-			const dir = this.root_dir;
-
-			 this.readFolder(path.resolve(dir, item))
-				.then(item => {
-					//const modulePath = path.resolve()
-					found.push(item); 
-					//console.log(item);
-				});
-		})
-		return found;
-	}
-
-	async dirModel() {
-		await this.recursiveDirWalker(this.directory)
-			.then(() => {
-				this.dirs.forEach((item, key, array) => {
-					const isPath = /\./i;					
-					if (!isPath.test(item)) {
-						const dir = item.replace(this.directory, '');
-						const pathName = dir.substr(1);
-						const itemGroup = [];
-
-						
-						array.forEach(item => {
-							const wrapper = item.split('/');
-							if (item.indexOf(pathName) > 0 && isPath.test(item)) {
-								const mod = {
-									url: item,
-									currentFolder: pathName,
-									wrapperFolder: wrapper[wrapper.length-3]
-								}
-								itemGroup.push(mod);		
-							}
-						})
-						this.model.push(itemGroup);
-						//{[pathName] :itemGroup}
-					}
-				})
-			});
-			console.log(this.model);
-			return this.model;	
-	}
-
-
-*/
+ 
