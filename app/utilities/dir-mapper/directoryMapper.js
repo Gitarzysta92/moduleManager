@@ -128,49 +128,6 @@ class DirMap {
 
 
 
-class App {
-	constructor(args) {
-		this.root_dir = args[0];
-		this.modulesIgnorePattern = ['node_modules', '.gitignore','.git','package-lock.json', 'package.json', 'README.md']
-		this.modules = new DirMap(this.root_dir, this.modulesIgnorePattern);
-		this.modules.getFilesList(['module-2']).then(result => console.log(result));
-
-		this.modules.getSingleFile(['module-2.js']).then(result => console.log(result));
-	}
-
-	met() {
-		
-		//return this.db.then(db =>  db);
-		return this.method;
-	}
-
-	pathToArray(path) {
-		if (typeof path !== 'string') return [];
-		const pathArray = path.split('/');
-		return pathArray[0].length === 0 ? pathArray.slice(1) : pathArray;
-	}
-
-}
 
 
-
-
-
-
-
-module.exports = (function() {	
-	this.app;
-	function createInstance(args) {
-		const app = new App(args);
-		return app;
-	}
-
-	return {
-		init: function(...args) {
-				this.app = createInstance(args);
-				delete this.init;
-			}
-	}
-})();
-
- 
+module.exports = DirMap;

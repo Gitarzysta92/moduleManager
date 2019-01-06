@@ -8,7 +8,6 @@ const server = require('./server/server'),
 
 const launch = (port, app) => {
 	server.run(port, app)
-	app.init(__dirname);
 
 };
 

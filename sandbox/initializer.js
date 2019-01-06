@@ -1,1 +1,0 @@
-const module_init = require('./module');

@@ -1,0 +1,4 @@
+{
+    "name" : "dir-mapper",
+    "main" : "./directoryMapper.js"
+}
