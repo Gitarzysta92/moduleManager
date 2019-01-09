@@ -9,7 +9,7 @@ const path = require('path');
 class DirMap {
 	constructor(startDir, ignored) {
 		this.directory = startDir.split(path.sep).join('/');
-		this._ignorePattern = ignored;
+		this._ignorePattern = ignored || [];
 		this._defaultPattern = this._prepareRegexPattern(['node_modules', '.gitignore','.git']);
 	}
 

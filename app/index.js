@@ -1,4 +1,4 @@
-
+const moduleManager = require('./system/modules-manager');
 
 /*
 this.root_dir = args[0];
@@ -10,43 +10,10 @@ this.root_dir = args[0];
 	}
 */
 const app = {
-	config: { 
-		name: 'mongo-config',
-		type: 'config',
-		data: 'object',
-		dir: ''
-	},
-
-}
-
-const dirMapper = require('./utilities/dir-mapper');
-
-const modules = {
-	mongoConfig: { 
-		name: 'mongo-config',
-		type: 'config',
-		data: 'object',
-		dependencies: [],
-		dir: ''
-	},
-	dirMapper: {
-		name: 'dir-mapper',
-		type: 'helper',
-		data: dirMapper,
-		dependencies: [],
-		dir: ''
-	}
 }
 
 
-
-// setup module manager
-app.modulesManager = require('./utilities/modules-manager')({app});
-app.mongoInstance = require('./services/module-1/module-1')(modules);
+//console.log(moduleManager);
 
 
-console.log(new app.mongoInstance.data);
-
-
-module.exports.app = {
-}
+module.exports.app = {}
