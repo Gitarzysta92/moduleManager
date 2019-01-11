@@ -1,6 +1,9 @@
+const path = require('path');
+const defaultDirectory = path.dirname(require.main.filename);
+
+
 const modules = {
 	set list(list) {
-
 	},
 	list: []
 };
@@ -8,13 +11,14 @@ class ModuleInterface {
 	constructor(fileName) {
 		this.id = this.uniqueId(10);
 		this.name = this.setName(fileName);
-		this.type = '' | 'all';
+		this.type = this.setType(fileName) || 'None';
 		this.published = {};
 		this.initDate = Date.now();
 		this.dependency = [];
 		this._dependencyQuery = [];
 		this.constructor.saveInstance(this);
 		this.temp = {};
+		this.rootDirectory = defaultDirectory.split('\\').join('/');
 	}
 
 	static saveInstance(instance) {
@@ -46,8 +50,12 @@ class ModuleInterface {
 		 this.published.push(exported);
 	}
 
-	setType(typeName) {
-		this.type = typeName;
+	setType(fileName) {
+		const nameArr = fileName.split('.');
+		if (nameArr.length > 2) {
+			return nameArr[nameArr.length -2];	
+		}
+		return undefined;
 	}
 
 
