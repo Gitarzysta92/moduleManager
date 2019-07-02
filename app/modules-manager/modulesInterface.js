@@ -2,11 +2,9 @@ const path = require('path');
 const defaultDirectory = path.dirname(require.main.filename);
 
 
-const modules = {
-	set list(list) {
-	},
-	list: []
-};
+const modules = { list: [] };
+
+
 class ModuleInterface {
 	constructor(fileName) {
 		this.id = this.uniqueId(10);
@@ -95,8 +93,3 @@ class ModuleInterface {
 }
 
 module.exports = ModuleInterface;
-
-module.exports.setting = function(setup) {
-	modules.list = setup;
-	return 'asd';
-}

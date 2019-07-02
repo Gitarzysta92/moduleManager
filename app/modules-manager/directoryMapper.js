@@ -2,10 +2,6 @@ const fs = require('fs');
 const path = require('path');
 
 
-//
-//
-//
-
 class DirMap {
 	constructor(startDir, ignored) {
 		this.directory = startDir.split(path.sep).join('/');
@@ -14,61 +10,35 @@ class DirMap {
 	}
 
 	// DirMap interface
-	async getFilesList(includeFiles) {
-		const filesArray = await this._dirWalker(this.directory);
+	getFilesList(includeFiles) {
+		const filesArray = this._dirWalker(this.directory);
 		return this._validate(this._createList(filesArray), this._dirInclude, includeFiles);		
 	}
 
-	async getSingleFile(fileQuery) {
-		const result = await this.getFilesList(fileQuery)
+	getSingleFile(fileQuery) {
+		const result = this.getFilesList(fileQuery)
 		return result[0];
 	}
 
 	// Recursive dir walker
 	// input:path = base directory
 	// output:promise = array of files directories
-	async _dirWalker(path) {
-		const currentElement = await this._reading(path);
+	_dirWalker(path) {
+		const currentElement = fs.statSync(path);
 		const list = [];
 			
 		if (currentElement.isDirectory()) {
-			let pathList = await this._listing(path);	
+			let pathList = fs.readdirSync(path);	
 			pathList = this._validate(pathList, this._dirExclude, this._ignorePattern);
-			await this._forEachAsync(pathList, async current => {
+			pathList.forEach(current => {
 					const fullPath = path.concat('/'+ current);
-					const results = await this._dirWalker(fullPath);
+					const results = this._dirWalker(fullPath);
 					list.push(results);	
 			});
 			return list;
 		} else {
 			return path;
 		}
-	}
-
-	// Get elements of passed directory
-	// input:path = base directory
-	// output:promise = array of directory elements
-	_listing(path) {
-		const statResult = new Promise((resolve, reject) => {
-			fs.readdir(path, (error, fileList) => {
-				resolve(fileList);
-				reject(error);
-			});
-		});
-		return statResult;
-	}
-
-	// Get stats of passed directory
-	// input:path = base directory
-	// output:promise = file stats object
-	_reading(path) {
-		const readResult = new Promise((resolve, reject) => {
-			fs.stat(path, (error, file) => {
-				resolve(file);
-				reject(error);
-			});
-		});
-		return readResult;
 	}
 
 	_createList(filesArray, aggregator = []) {
@@ -114,14 +84,6 @@ class DirMap {
 		const regex = new RegExp('(' + regStr + ')','ig');
 		return regStr.length > 0 ? regex : null;
 	}
-
-	//Asynchoronus forEach loop
-	async _forEachAsync(array, callback) {
-		for(let index = 0; index < array.length; index++) {
-			await callback(array[index], index, array);
-		}
-	}
-
 }
 
 
